@@ -48,8 +48,9 @@ Function pcap_stats{
     Param(
         [parameter(Mandatory=$true)]
         [String]
-        $pcap 
+        $pcap
         )
+
     $http = 0
     $NetBios = 0
     $DNS = 0
@@ -60,6 +61,7 @@ Function pcap_stats{
     $ldap = 0
     $dcom = 0
     $highport = 0
+    $IPStats = @()
 
     $capture = tshark -r $pcap -n -l -T ek -e _ws.col.Protocol `
         -e frame.time `
@@ -75,17 +77,56 @@ Function pcap_stats{
     $count = $capture.count
     $capture = $capture | Sort-Object Time
 
+    $srcip = $packet.srcip
+    $srcport = $packet.srcport
+    $dstip = $packet.dstip
+    $dstport = $packet.dstport
+
     foreach ($packet in $capture) {
-        if ($packet.srcport -eq 80 -or $packet.dstport -eq 80){$http++}
-        elseif ($packet.srcport -eq 135 -or $packet.dstport -eq 135){$DCOM++} 
-        elseif ($packet.srcport -eq 443 -or $packet.dstport -eq 443){$https++} 
-        elseif ($packet.srcport -eq 137 -or $packet.srcport -eq 138 -or $packet.dstport -eq 137 -or $packet.dstport -eq 138){$NetBios++}  
-        elseif ($packet.srcport -eq 53 -or $packet.dstport -eq 53){$DNS++}
-        elseif ($packet.srcport -eq 123 -or $packet.dstport -eq 123){$NTP++}
-        elseif ($packet.srcport -eq 1900 -or $packet.dstport -eq 1900){$SSDP++}
-        elseif ($packet.srcport -eq 445 -or $packet.dstport -eq 445){$SMB++}  
-        elseif ($packet.srcport -eq 389 -or $packet.dstport -eq 389){$LDAP++} 
-        elseif ($packet.srcport -ge 50000 -or $packet.dstport -ge 50000) { $highport++}
+        $srcip = $packet.srcip
+        $srcport = $packet.srcport
+        $dstip = $packet.dstip
+        $dstport = $packet.dstport
+
+        if ($packet.srcport -eq 80 -or $packet.dstport -eq 80){
+            $http++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - HTTP"
+        }
+        elseif ($packet.srcport -eq 135 -or $packet.dstport -eq 135){
+            $DCOM++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - DCOM"
+        } 
+        elseif ($packet.srcport -eq 443 -or $packet.dstport -eq 443){
+            $https++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - HTTPS"
+        } 
+        elseif ($packet.srcport -eq 137 -or $packet.srcport -eq 138 -or $packet.dstport -eq 137 -or $packet.dstport -eq 138){
+            $NetBios++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - NetBios"
+        }  
+        elseif ($packet.srcport -eq 53 -or $packet.dstport -eq 53){
+            $DNS++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - DNS"
+        }
+        elseif ($packet.srcport -eq 123 -or $packet.dstport -eq 123){
+            $NTP++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - NTP"
+        }
+        elseif ($packet.srcport -eq 1900 -or $packet.dstport -eq 1900){
+            $SSDP++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - SSDP"
+        }
+        elseif ($packet.srcport -eq 445 -or $packet.dstport -eq 445){
+            $SMB++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - SMB"
+        }  
+        elseif ($packet.srcport -eq 389 -or $packet.dstport -eq 389){
+            $LDAP++
+            $IPStats += "SrcIP: " + $srcip + " - DstIP: " + $dstip + " - LDAP"
+        } 
+        elseif ($packet.srcport -ge 50000 -or $packet.dstport -ge 50000) {
+            $highport++
+        }
         else {
             $leftover += $packet.srcport
             $leftover += $packet.dstport
@@ -121,4 +162,8 @@ Function pcap_stats{
     Write-Host "NTP Packet Count: $smb ($smbpercentage)"
     write-host "Unmapped:"
     $leftover
+    write-host ""
+    Write-Host "=============="
+    Write-Host "IP Statistics:"
+    $IPStats | Group-Object | select Count, Name | Sort-Object Count -Descending
 }
