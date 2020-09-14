@@ -38,72 +38,16 @@ function ProcessPacket($InPacketJson) {
             qry_name = $InPacket.dns_qry_name
             qry_type = $InPacket.dns_qry_type
             qry_a = $InPacket.dns_a
+            http_request_method = $InPacket.http_request_method
+            http_host = $InPacket.http_host
+            http_request_uri = $InPacket.http_request_uri
+            http_user_agent = $InPacket.http_user_agent
+            http_response_phrase = $InPacket.http_response_phrase
+            http_request_version = $InPacket.http_request_version
+            http_server = $InPacket.http_server
         }
 
-        Write-Output $Packet | Select-Object Time, SrcIP, DstIP, Protocol, SrcPort, DstPort, Qry_Name, Qry_Type, Qry_A
-    }
-}
-
-Function pcap_dns{
-
-    Param(
-        [parameter(Mandatory=$true)]
-        [String]
-        $pcap,
-        
-        [Parameter(Mandatory=$false)]
-        [Switch]
-        $statistics,
-
-        [Parameter(Mandatory=$false)]
-        [Switch]
-        $detail
-        )
-
-    $dnsstats = @()
-    $dnsdetails = @()
-    $capture = tshark -r $pcap -n -l -T ek -Y dns `
-        -e _ws.col.Protocol `
-        -e frame.time `
-        -e ip.proto `
-        -e ip.src `
-        -e ip.dst `
-        -e tcp.srcport `
-        -e tcp.dstport `
-        -e udp.srcport `
-        -e udp.dstport `
-        -e dns.qry.name `
-        -e dns.qry.type `
-        -e dns.a | 
-    ForEach-Object {ProcessPacket $_}
-    $count = $capture.count
-    $capture = $capture | Sort-Object Time
-
-    if ($statistics){
-        foreach ($packet in $capture){
-            $qname = $packet.qry_name
-            $qtype = $packet.qry_type
-            $qresult = $packet.qry_a
-            if ($null -ne $qresult){$dnsstats += "Query: " + $qname + " - QueryType: " + $qtype + " - Response: " + $qresult}
-        }
-        $time = $capture.Time
-        $firsttime = $Time | Select-Object -First 1
-        $lasttime = $time | Select-Object -Last 1
-
-        write-host "DNS Count: $count"
-        write-host "Oldest Packet $firsttime"
-        Write-Host "newest packet: $lasttime"
-        $dnsstats | Group-Object | Select-Object Count, Name | Sort-Object Count -Descending
-    }
-    elseif ($detail){
-        foreach ($packet in $capture){
-            $qname = $packet.qry_name
-            $qtype = $packet.qry_type
-            $qresult = $packet.qry_a
-            $time = $packet.time
-            if ($null -ne $qresult){$dnsdetails += "Time: " + $time + " - Query: " + $qname + " - QueryType: " + $qtype + " - Response: " + $qresult}
-        }
-        $dnsdetails | Sort-Object Time
+        Write-Output $Packet | Select-Object Time, SrcIP, DstIP, Protocol, SrcPort, DstPort, Qry_Name, Qry_Type, Qry_A, http_request_method, http_host, http_request_uri, http_user_agent, http_response_phrase, http_request_version, http_server
     }
 }
 
@@ -231,4 +175,132 @@ Function pcap_stats{
     Write-Host "=============="
     Write-Host "IP Statistics:"
     $IPStats | Group-Object | Select-Object Count, Name | Sort-Object Count -Descending
+}
+
+Function pcap_dns{
+
+    Param(
+        [parameter(Mandatory=$true)]
+        [String]
+        $pcap,
+        
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $statistics,
+
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $detail
+        )
+
+    $dnsstats = @()
+    $dnsdetails = @()
+    $capture = tshark -r $pcap -n -l -T ek -Y dns `
+        -e _ws.col.Protocol `
+        -e frame.time `
+        -e ip.proto `
+        -e ip.src `
+        -e ip.dst `
+        -e tcp.srcport `
+        -e tcp.dstport `
+        -e udp.srcport `
+        -e udp.dstport `
+        -e dns.qry.name `
+        -e dns.qry.type `
+        -e dns.a | 
+    ForEach-Object {ProcessPacket $_}
+    $count = $capture.count
+    $capture = $capture | Sort-Object Time
+
+    if ($statistics){
+        foreach ($packet in $capture){
+            $qname = $packet.qry_name
+            $qtype = $packet.qry_type
+            $qresult = $packet.qry_a
+            if ($null -ne $qresult){$dnsstats += "Query: " + $qname + " - QueryType: " + $qtype + " - Response: " + $qresult}
+        }
+        $time = $capture.Time
+        $firsttime = $Time | Select-Object -First 1
+        $lasttime = $time | Select-Object -Last 1
+
+        write-host "DNS Count: $count"
+        write-host "Oldest Packet $firsttime"
+        Write-Host "newest packet: $lasttime"
+        $dnsstats | Group-Object | Select-Object Count, Name | Sort-Object Count -Descending
+    }
+    elseif ($detail){
+        foreach ($packet in $capture){
+            $qname = $packet.qry_name
+            $qtype = $packet.qry_type
+            $qresult = $packet.qry_a
+            $time = $packet.time
+            if ($null -ne $qresult){$dnsdetails += "Time: " + $time + " - Query: " + $qname + " - QueryType: " + $qtype + " - Response: " + $qresult}
+        }
+        $dnsdetails | Sort-Object Time
+    }
+}
+
+Function pcap_http{
+
+    Param(
+        [parameter(Mandatory=$true)]
+        [String]
+        $pcap,
+        
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $statistics,
+
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $detail
+        )
+
+    $httpstats = @()
+    $httpdetails = @()
+    $capture = tshark -r $pcap -n -l -T ek -Y http `
+        -e _ws.col.Protocol `
+        -e frame.time `
+        -e ip.proto `
+        -e ip.src `
+        -e ip.dst `
+        -e tcp.srcport `
+        -e tcp.dstport `
+        -e udp.srcport `
+        -e udp.dstport `
+        -e http.request.method `
+        -e http.request.uri `
+        -e http.request.version `
+        -e http.accept_encoding `
+        -e http.user_agent `
+        -e http.host `
+        -e http.response.version `
+        -e http.response.code `
+        -e http.response.phrase `
+        -e http.server `
+        -e http.response.line `
+        -e http.file_data |
+    ForEach-Object {ProcessPacket $_}
+
+    $count = $capture.count
+    $capture = $capture | Sort-Object Time
+
+    if ($statistics){
+        foreach ($packet in $capture){
+            $httphost = $packet.http_host
+            $httpresponse = $packet.http_response_phrase
+            $uri = $packet.http_request_uri
+            $method = $packet.http_request_method
+            $agent = $packet.http_user_agent
+            $src = $packet.srcip
+            $servertype = $packet.http_server
+            if ($null -ne $uri){$httpstats += "Src: " + $src + " Host: " + $httphost + " - URI: " + $uri + " - Method: " + $Method}
+            else{$httpstats += "Src: " + $src + " - Response: " + $httpresponse + " - Server Type: " + $servertype}
+        }
+        $httpstats
+    }
+    elseif ($detail){
+        foreach ($packet in $capture){$packet}
+    }
+    else{$capture | Out-GridView}
 }
