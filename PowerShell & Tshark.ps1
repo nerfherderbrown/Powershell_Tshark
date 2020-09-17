@@ -1,4 +1,4 @@
-﻿### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
+### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
 if ((get-alias tshark).name -ne 'tshark'){New-Alias -Name tshark -Value "C:\Program Files\Wireshark\tshark.exe"}
 Function Get-FileName{
     [cmdletbinding()]
@@ -45,9 +45,10 @@ function ProcessPacket($InPacketJson) {
             http_response_phrase = $InPacket.http_response_phrase
             http_request_version = $InPacket.http_request_version
             http_server = $InPacket.http_server
+            http_response_code = $InPacket.http_response_code
         }
 
-        Write-Output $Packet | Select-Object Time, SrcIP, DstIP, Protocol, SrcPort, DstPort, Qry_Name, Qry_Type, Qry_A, http_request_method, http_host, http_request_uri, http_user_agent, http_response_phrase, http_request_version, http_server
+        Write-Output $Packet | Select-Object Time, SrcIP, DstIP, Protocol, SrcPort, DstPort, Qry_Name, Qry_Type, Qry_A, http_request_method, http_host, http_request_uri, http_user_agent, http_response_phrase, http_request_version, http_server, http_response_code
     }
 }
 
@@ -288,19 +289,24 @@ Function pcap_http{
     if ($statistics){
         foreach ($packet in $capture){
             $httphost = $packet.http_host
-            $httpresponse = $packet.http_response_phrase
+            $httpresponsecode = $packet.http_response_code
+            $httpresponsephrase = $packet.http_response_phrase
             $uri = $packet.http_request_uri
             $method = $packet.http_request_method
             $agent = $packet.http_user_agent
             $src = $packet.srcip
             $servertype = $packet.http_server
+            $httpresponse = $httpresponsephrase + "(" + $httpresponsecode + ")"
             if ($null -ne $uri){$httpstats += "Src: " + $src + " Host: " + $httphost + " - URI: " + $uri + " - Method: " + $Method}
             else{$httpstats += "Src: " + $src + " - Response: " + $httpresponse + " - Server Type: " + $servertype}
         }
+        $httpreponsecode_stats
+        $httpauthentication_counts
+        $filetypes
+        $httpURI_stats
         $httpstats
     }
     elseif ($detail){
         foreach ($packet in $capture){$packet}
     }
     else{$capture | Out-GridView}
-}
