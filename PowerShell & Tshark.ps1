@@ -1,4 +1,4 @@
-﻿### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
+### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
 if ((get-alias tshark).name -ne 'tshark'){New-Alias -Name tshark -Value "C:\Program Files\Wireshark\tshark.exe"}
 Function Get-FileName{
     [cmdletbinding()]
@@ -310,4 +310,3 @@ Function pcap_http{
         foreach ($packet in $capture){$packet}
     }
     else{$capture | Out-GridView}
-}
