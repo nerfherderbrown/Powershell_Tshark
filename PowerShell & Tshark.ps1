@@ -1,4 +1,4 @@
-﻿﻿### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
+﻿### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
 if ((get-alias tshark -ErrorAction SilentlyContinue).name -ne 'tshark'){New-Alias -Name tshark -Value "C:\Program Files\Wireshark\tshark.exe"}
 
 #### Global Variables to hold converted data ####
@@ -45,6 +45,9 @@ function ProcessPacket($InPacketJson) {
     }
 }
 
+function pcap_reset{
+    Clear-Variable capture* -Scope Global
+}
 Function pcap_stats{
 
     Param(
@@ -149,17 +152,19 @@ Function pcap_stats{
     Write-Host "Total Packet Count: $count"
     write-host "Oldest Packet $firsttime"
     Write-Host "newest packet: $lasttime"
-    Write-Host "HTTP Packet Count: $http ($httppercentage)"
-    Write-Host "HTTPS Packet Count: $https ($httpspercentage)"
-    Write-Host "NetBios Packet Count: $netbios ($netbiospercentage)"
-    Write-Host "DNS Packet Count: $dns ($dnspercentage)"
-    Write-Host "NTP Packet Count: $ntp ($ntppercentage)"
-    Write-Host "Simple Service Discovery Protocol Packet Count: $SSDP ($ssdppercentage)"
-    Write-Host "DCOM Packet Count: $dcom ($dcompercentage)"
-    Write-Host "NTP Packet Count: $ldap ($ldappercentage)"
-    Write-Host "NTP Packet Count: $smb ($smbpercentage)"
-    write-host "Unmapped:"
-    $leftover
+    if ($http -gt 0){Write-Host "HTTP Packet Count: $http ($httppercentage)"}
+    if ($https -gt 0){Write-Host "HTTPS Packet Count: $https ($httpspercentage)"}
+    if ($NetBios -gt 0){Write-Host "NetBios Packet Count: $netbios ($netbiospercentage)"}
+    if ($DNS -gt 0){Write-Host "DNS Packet Count: $dns ($dnspercentage)"}
+    if ($NTP -gt 0){Write-Host "NTP Packet Count: $ntp ($ntppercentage)"}
+    if ($SSDP -gt 0){Write-Host "Simple Service Discovery Protocol Packet Count: $SSDP ($ssdppercentage)"}
+    if ($dcom -gt 0){Write-Host "DCOM Packet Count: $dcom ($dcompercentage)"}
+    if ($ldap -gt 0){Write-Host "LDAP Packet Count: $ldap ($ldappercentage)"}
+    if ($SMB -gt 0){Write-Host "SMB Packet Count: $smb ($smbpercentage)"}
+    if ($leftover.count -gt 0){
+        write-host "Unmapped:"
+        $leftover
+    }
     write-host ""
     Write-Host "=============="
     Write-Host "IP Statistics:"
@@ -249,6 +254,12 @@ Function pcap_http{
 
     $httpstats = @()
     $httpdetails = @()
+    $httpresponsecodecount = 0
+    $httpresponsecodecount_infomational = 0
+    $httpresponsecodecount_successful = 0
+    $httpresponsecodecount_redirects = 0
+    $httpresponsecodecount_clienterrors = 0
+    $httpresponsecodecount_servererrors = 0
     if ($null -eq $Global:capture_http){
         $Global:capture_http = tshark -r $pcap -n -l -T ek -Y http `
             -e _ws.col.Protocol `
@@ -288,11 +299,38 @@ Function pcap_http{
             $src = $packet.srcip
             $servertype = $packet.http_server
             $httpresponse = $httpresponsephrase + "(" + $httpresponsecode + ")"
+            if ($httpresponsecode -ge 100 -and $httpresponsecode -le 199){
+                $httpresponsecodecount_infomational ++
+                $httpresponsecodecount++}
+            elseif ($httpresponsecode -ge 200 -and $httpresponsecode -le 299){
+                $httpresponsecodecount_successful ++
+                $httpresponsecodecount++}
+            elseif ($httpresponsecode -ge 300 -and $httpresponsecode -le 399){
+                $httpresponsecodecount_redirects ++
+                $httpresponsecodecount++}
+            elseif ($httpresponsecode -ge 400 -and $httpresponsecode -le 499){
+                $httpresponsecodecount_clienterrors ++
+                $httpresponsecodecount++}
+            elseif ($httpresponsecode -ge 500 -and $httpresponsecode -le 599){
+                $httpresponsecodecount_servererrors ++
+                $httpresponsecodecount++}
             if ($null -ne $uri){$httpstats += "Src: " + $src + " Host: " + $httphost + " - URI: " + $uri + " - Method: " + $Method + " - UserAgent: " + $Agent}
             else{$httpstats += "Src: " + $src + " - Response: " + $httpresponse + " - Server Type: " + $servertype}
         }
+        $httpresponsecodecount_infomational_percent = ($httpresponsecodecount_infomational/$httpresponsecodecount).tostring("P")
+        $httpresponsecodecount_successful_percent = ($httpresponsecodecount_successful/$httpresponsecodecount).tostring("P")
+        $httpresponsecodecount_redirects_percent = ($httpresponsecodecount_redirects/$httpresponsecodecount).tostring("P")
+        $httpresponsecodecount_clienterrors_percent = ($httpresponsecodecount_clienterrors/$httpresponsecodecount).tostring("P")
+        $httpresponsecodecount_servererrors_percent = ($httpresponsecodecount_servererrors/$httpresponsecodecount).tostring("P")
+
         write-host "HTTP Packet Count: $count"
-        $httpreponsecode_stats
+        if($null -ne $httpresponsecodecount){write-host "HTTP Response Codes"
+            if ($httpresponsecodecount_infomational -gt 0){write-host "  Informational: $httpresponsecodecount_infomational ($httpresponsecodecount_infomational_percent)"}
+            if ($httpresponsecodecount_successful -gt 0){write-host "  Successful: $httpresponsecodecount_successful ($httpresponsecodecount_successful_percent)"}
+            if ($httpresponsecodecount_redirects -gt 0){write-host "  Redirects: $httpresponsecodecount_redirects ($httpresponsecodecount_redirects_percent)"}
+            if ($httpresponsecodecount_clienterrors -gt 0){write-host "  Client Errors: $httpresponsecodecount_clienterrors ($httpresponsecodecount_clienterrors_percent)"}
+            if ($httpresponsecodecount_servererrors -gt 0){write-host "  Server Errors: $httpresponsecodecount_servererrors ($httpresponsecodecount_servererrors_percent)"}
+        }
         $httpauthentication_counts
         $filetypes
         $httpURI_stats
@@ -301,4 +339,5 @@ Function pcap_http{
     elseif ($detail){
         foreach ($packet in $Global:capture_http){$packet}
     }
+    $httpdetails
 }
