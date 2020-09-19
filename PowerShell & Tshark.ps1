@@ -1,4 +1,4 @@
-﻿### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
+﻿﻿### Function from: https://xkln.net/blog/processing-tshark-streams-with-powershell/ ###
 if ((get-alias tshark -ErrorAction SilentlyContinue).name -ne 'tshark'){New-Alias -Name tshark -Value "C:\Program Files\Wireshark\tshark.exe"}
 
 #### Global Variables to hold converted data ####
